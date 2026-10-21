@@ -35,7 +35,7 @@ done
 [ -n "$OUT" ]   || { echo "error: --out is required" >&2; exit 1; }
 [ -d "$IMAGE" ] || { echo "error: no such image: $IMAGE" >&2; exit 1; }
 
-JDK_DIR_NAME="java-27-openjdk"
+JDK_DIR_NAME="${JDK_DIR_NAME:-java-27-openjdk}"
 PREFIX_REL="data/data/com.termux/files/usr"
 
 log() { printf '==> %s\n' "$*" >&2; }
@@ -112,7 +112,7 @@ write_control() {
 
 # The dependencies are the Termux packages that provide the shared libraries
 # the JDK links against.
-DEPENDS="libandroid-spawn, alsa-lib, cups"
+DEPENDS="libandroid-spawn, libiconv, alsa-lib"
 RECOMMENDS="ca-certificates-java, $PKG_NAME_X, resolv-conf"
 SUGGESTS="cups"
 
@@ -120,7 +120,7 @@ write_control "$STAGE" "$PKG_NAME" "$DEPENDS" "$RECOMMENDS" "$SUGGESTS" \
   "Java development kit and runtime"
 
 write_control "$STAGE_X" "$PKG_NAME_X" \
-  "libx11, libxext, libxi, libxrender, libxtst, fontconfig" "" "" \
+  "libandroid-shmem, libx11, libxext, libxi, libxrender, libxtst, freetype" "" "" \
   "Portion of $PKG_NAME requiring X11 functionality"
 
 # The source package.

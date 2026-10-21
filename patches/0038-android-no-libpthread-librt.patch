@@ -1,0 +1,59 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 38/38] Do not link libpthread and librt on Android
+
+Android's bionic has the threading functions and the timer functions in
+libc, there are no separate libpthread and librt libraries, so the link
+fails with "unable to find library -lpthread".
+
+---
+--- a/make/autoconf/libraries.m4
++++ b/make/autoconf/libraries.m4
+@@ -131,6 +131,12 @@
+     BASIC_JVM_LIBS="$BASIC_JVM_LIBS $LIBDL"
+   fi
+ 
++  # Android's bionic has the threading functions and the timer functions in
++  # libc, there are no separate libpthread and librt libraries.
++  case "$host_os" in
++    *android*)
++      ;;
++    *)
+   # Threading library
+   if test "x$OPENJDK_TARGET_OS" = xlinux || test "x$OPENJDK_TARGET_OS" = xaix; then
+     BASIC_JVM_LIBS="$BASIC_JVM_LIBS $LIBPTHREAD"
+@@ -140,6 +146,8 @@
+   if test "x$OPENJDK_TARGET_OS" = xlinux; then
+     BASIC_JVM_LIBS="$BASIC_JVM_LIBS -lrt"
+   fi
++    ;;
++  esac
+ 
+   # perfstat lib
+   if test "x$OPENJDK_TARGET_OS" = xaix; then
+@@ -188,11 +196,19 @@
+   LIBS="$save_LIBS"
+ 
+   # Setup posix pthread support
+-  if test "x$OPENJDK_TARGET_OS" != "xwindows"; then
+-    LIBPTHREAD="-lpthread"
+-  else
+-    LIBPTHREAD=""
+-  fi
++  case "$host_os" in
++    *android*)
++      # Android's bionic has the threading functions in libc.
++      LIBPTHREAD=""
++      ;;
++    *)
++      if test "x$OPENJDK_TARGET_OS" != "xwindows"; then
++        LIBPTHREAD="-lpthread"
++      else
++        LIBPTHREAD=""
++      fi
++      ;;
++  esac
+   AC_SUBST(LIBPTHREAD)
+ 
+   # Setup libiconv flags and library

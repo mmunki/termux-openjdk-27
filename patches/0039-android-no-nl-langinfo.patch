@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 39/39] Do not call nl_langinfo() on Android
+
+nl_langinfo() is only available from API 26 on Android, so it is not
+declared when the JDK is built for API 24.  The same fix as the one the
+Termux package uses for the other two places that call it.
+
+---
+--- a/src/java.base/unix/native/libjava/java_props_md.c
++++ b/src/java.base/unix/native/libjava/java_props_md.c
+@@ -287,8 +287,15 @@
+          * Euro locales, in particular. */
+         if (strcmp(p, "ISO8859-15") == 0)
+             p = "ISO8859-15";
++#ifdef __ANDROID__
++        /* nl_langinfo() is only available from API 26 on Android and the
++         * locale support of Android is rudimentary anyway. */
++        else
++            p = "UTF-8";
++#else
+         else
+             p = nl_langinfo(CODESET);
++#endif
+ 
+         /* Convert the bare "646" used on Solaris to a proper IANA name */
+         if (strcmp(p, "646") == 0)

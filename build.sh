@@ -239,7 +239,7 @@ if [ ! -f "$JDK_SRC/build/linux-aarch64-server-release/spec.gmk" ]; then
     --disable-warnings-as-errors \
     --with-extra-cflags="-O2 -fPIC -I$PREFIX/include -D__ANDROID__=1 -D__TERMUX__=1 -DLE_STANDALONE" \
     --with-extra-cxxflags="-O2 -fPIC -I$PREFIX/include -D__ANDROID__=1 -D__TERMUX__=1 -DLE_STANDALONE" \
-    --with-extra-ldflags="-L$PREFIX/lib -Wl,-rpath,$TERMUX_PREFIX/lib -Wl,-rpath,$TERMUX_PREFIX/lib/jvm/$JDK_DIR_NAME/lib -Wl,--enable-new-dtags" \
+    --with-extra-ldflags="-L$PREFIX/lib -Wl,-rpath,$TERMUX_PREFIX/lib -Wl,-rpath,$TERMUX_PREFIX/lib/jvm/$JDK_DIR_NAME/lib -Wl,--enable-new-dtags -Wl,--as-needed -landroid-shmem -landroid-spawn" \
     --with-jobs="$(nproc)" \
     CC="$CC" CXX="$CXX" AR="$AR" NM="$NM" OBJCOPY="$OBJCOPY" OBJDUMP="$OBJDUMP" \
     STRIP="$STRIP" CXXFILT="$CXXFILT" \

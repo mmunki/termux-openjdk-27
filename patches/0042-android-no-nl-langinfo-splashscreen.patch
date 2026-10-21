@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 42/42] Do not call nl_langinfo() in the splash screen on Android
+
+nl_langinfo() is only available from API 26 on Android, the same fix as
+the one for the other two places that call it.
+
+---
+--- a/src/java.desktop/unix/native/libsplashscreen/splashscreen_sys.c
++++ b/src/java.desktop/unix/native/libsplashscreen/splashscreen_sys.c
+@@ -65,7 +65,13 @@
+     }
+     old_locale = setlocale(LC_ALL, "");
+ 
++#ifdef __ANDROID__
++    /* nl_langinfo() is only available from API 26 on Android and the
++     * locale support of Android is rudimentary anyway. */
++    codeset = "UTF-8";
++#else
+     codeset = nl_langinfo(CODESET);
++#endif
+     if ( codeset == NULL || codeset[0] == 0 ) {
+         goto done;
+     }

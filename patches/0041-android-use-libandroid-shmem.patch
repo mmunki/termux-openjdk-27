@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 41/41] Use the shared memory of the Termux libandroid-shmem package on Android
+
+Android's bionic has no System V shared memory, the AWT code of the JDK
+uses it for the MIT-SHM extension of X11.  The implementation of the Termux
+libandroid-shmem package is used instead.
+
+---
+--- a/make/autoconf/libraries.m4
++++ b/make/autoconf/libraries.m4
+@@ -211,6 +211,19 @@
+   esac
+   AC_SUBST(LIBPTHREAD)
+ 
++  # Setup the System V shared memory library.
++  # Android's bionic has no System V shared memory, the implementation of
++  # the Termux libandroid-shmem package is used instead.
++  case "$host_os" in
++    *android*)
++      SHM_LIBS="-landroid-shmem"
++      ;;
++    *)
++      SHM_LIBS=""
++      ;;
++  esac
++  AC_SUBST(SHM_LIBS)
++
+   # Setup libiconv flags and library
+   # Android's bionic has iconv only from API 28 on, so the iconv of the
+   # Termux libiconv package is used instead.
+--- a/make/modules/java.desktop/lib/AwtLibraries.gmk
++++ b/make/modules/java.desktop/lib/AwtLibraries.gmk
+@@ -311,7 +311,7 @@
+           parentheses, \
+       DISABLED_WARNINGS_clang_aix_awt_InputMethod.c := unused-function sign-compare, \
+       JDK_LIBS := libawt java.base:libjava, \
+-      LIBS_unix := $(LIBDL) $(LIBM) $(X_LIBS) -lX11 -lXext -lXi -lXrender \
++      LIBS_unix := $(LIBDL) $(LIBM) $(X_LIBS) $(SHM_LIBS) -lX11 -lXext -lXi -lXrender \
+           -lXtst, \
+       LIBS_linux := $(LIBPTHREAD), \
+       STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_XAWT_STATIC_EXCLUDE_OBJS), \

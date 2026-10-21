@@ -1,0 +1,48 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 40/40] Use the iconv of the Termux libiconv package on Android
+
+Android's bionic has iconv only from API 28 on, the JDK is built for
+API 24.  The iconv of the Termux libiconv package is used instead, the
+same way the official Termux package does it.
+
+---
+--- a/make/autoconf/libraries.m4
++++ b/make/autoconf/libraries.m4
+@@ -212,15 +212,26 @@
+   AC_SUBST(LIBPTHREAD)
+ 
+   # Setup libiconv flags and library
+-  if test "x$OPENJDK_TARGET_OS" == "xaix" || test "x$OPENJDK_TARGET_OS" == "xmacosx"; then
+-    ICONV_CFLAGS=
+-    ICONV_LDFLAGS=
+-    ICONV_LIBS=-liconv
+-  else
+-    ICONV_CFLAGS=
+-    ICONV_LDFLAGS=
+-    ICONV_LIBS=
+-  fi
++  # Android's bionic has iconv only from API 28 on, so the iconv of the
++  # Termux libiconv package is used instead.
++  case "$host_os" in
++    *android*)
++      ICONV_CFLAGS=
++      ICONV_LDFLAGS=
++      ICONV_LIBS=-liconv
++      ;;
++    *)
++      if test "x$OPENJDK_TARGET_OS" == "xaix" || test "x$OPENJDK_TARGET_OS" == "xmacosx"; then
++        ICONV_CFLAGS=
++        ICONV_LDFLAGS=
++        ICONV_LIBS=-liconv
++      else
++        ICONV_CFLAGS=
++        ICONV_LDFLAGS=
++        ICONV_LIBS=
++      fi
++      ;;
++  esac
+   AC_SUBST(ICONV_CFLAGS)
+   AC_SUBST(ICONV_LDFLAGS)
+   AC_SUBST(ICONV_LIBS)
