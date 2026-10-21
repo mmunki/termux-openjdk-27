@@ -23,6 +23,17 @@ replacement for it.
 The split is the same one the official package uses: the main package has no
 `java.desktop` module, the `-x` package adds it.
 
+## Download
+
+The packages are published as a GitHub release:
+
+- https://github.com/mmunki/termux-openjdk-27/releases/tag/v27.0.1
+
+```bash
+gh release download v27.0.1 --repo mmunki/termux-openjdk-27 \
+  --pattern 'openjdk-27_27.0.1_aarch64.deb'
+```
+
 ## Installation
 
 ```bash
