@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 37/37] Do not use noexcept for the forbidden C functions on Android
+
+Bionic does not mark the C library functions as noexcept, so a declaration
+with a noexcept exception specification does not match the declaration in
+the system header and clang rejects the build with "missing exception
+specification 'noexcept'".
+
+---
+--- a/src/hotspot/share/utilities/compilerWarnings.hpp
++++ b/src/hotspot/share/utilities/compilerWarnings.hpp
+@@ -131,6 +131,14 @@
+ #define FORBIDDEN_FUNCTION_COND_NOEXCEPT_noexcept NOT_WINDOWS(NOT_BSD(noexcept))
+ #define FORBIDDEN_FUNCTION_COND_NOEXCEPT_
+ 
++// Android's bionic does not mark the C library functions as noexcept, so a
++// declaration with a noexcept exception specification does not match the
++// declaration in the system header and the build fails with "missing
++// exception specification 'noexcept'".
++#ifdef __ANDROID__
++#undef FORBIDDEN_FUNCTION_COND_NOEXCEPT_noexcept
++#define FORBIDDEN_FUNCTION_COND_NOEXCEPT_noexcept
++#endif
+ 
+ #ifndef FORBIDDEN_FUNCTION_IMPORT_SPEC
+ #define FORBIDDEN_FUNCTION_IMPORT_SPEC

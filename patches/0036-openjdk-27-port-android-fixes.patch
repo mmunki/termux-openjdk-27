@@ -1,0 +1,150 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: opencode agent <opencode-agent@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 00:00:00 +0000
+Subject: [PATCH 36/36] Port the remaining Termux fixes to JDK 27
+
+Three hunks of the Termux openjdk-25 patch series do not apply to the
+JDK 27 sources because the code moved:
+
+- os::jvm_path() moved from os_linux.cpp to os_posix.cpp, so the
+  /proc/self/maps lookup that finds libjvm.so on Android has to follow.
+- The --disable-new-dtags handling moved from make/autoconf/flags-cflags.m4
+  to make/common/JdkNativeCompilation.gmk.
+
+The last hunk of the Termux patch 0015 (the #endif that closes the
+__ANDROID__ branch) is dropped, it was applied with a fuzz to a place
+where it does not belong.
+
+The arm-32 only part of the series (make/autoconf/flags-cflags.m4) and the
+bionic statx type fix are not needed, the JDK 27 sources do not have the
+problem they solve.
+---
+--- a/src/hotspot/os/linux/os_linux.cpp
++++ b/src/hotspot/os/linux/os_linux.cpp
+@@ -211,8 +211,6 @@
+ // avoid this
+ static bool suppress_primordial_thread_resolution = false;
+ 
+-static bool read_so_path_from_maps(const char* so_name, char* buf, int buflen);
+-
+ // utility functions
+ 
+ bool os::is_containerized() {
+@@ -1641,30 +1639,6 @@
+   return false;
+ }
+ 
+-static bool read_so_path_from_maps(const char* so_name, char* buf, int buflen) {
+-  FILE *fp = fopen("/proc/self/maps", "r");
+-  assert(fp, "Failed to open /proc/self/maps");
+-  if (!fp) {
+-    return false;
+-  }
+-
+-  char maps_buffer[2048];
+-  while (fgets(maps_buffer, 2048, fp) != NULL) {
+-    if (strstr(maps_buffer, so_name) == NULL) {
+-      continue;
+-    }
+-
+-    char *so_path = strchr(maps_buffer, '/');
+-    so_path[strlen(so_path) - 1] = '\0'; // Cut trailing \n
+-    jio_snprintf(buf, buflen, "%s", so_path);
+-    fclose(fp);
+-    return true;
+-  }
+-
+-  fclose(fp);
+-  return false;
+-}
+-
+ // Loads .dll/.so and
+ // in case of error it checks if .dll/.so was built for the
+ // same architecture as Hotspot is running on
+@@ -2869,7 +2843,6 @@
+       }
+     }
+   }
+-#endif
+ 
+   // we miss the cpufreq entries on Power and s390x
+ #if defined(AMD64)
+--- a/src/hotspot/os/posix/os_posix.cpp
++++ b/src/hotspot/os/posix/os_posix.cpp
+@@ -1116,6 +1116,34 @@
+   return is_same;
+ }
+ 
++#ifdef __ANDROID__
++// Android does not always give the full path of the shared library in
++// dladdr().  When that happens the path is looked up in /proc/self/maps.
++static bool read_so_path_from_maps(const char* so_name, char* buf, int buflen) {
++  FILE *fp = fopen("/proc/self/maps", "r");
++  assert(fp, "Failed to open /proc/self/maps");
++  if (!fp) {
++    return false;
++  }
++
++  char maps_buffer[2048];
++  while (fgets(maps_buffer, 2048, fp) != NULL) {
++    if (strstr(maps_buffer, so_name) == NULL) {
++      continue;
++    }
++
++    char *so_path = strchr(maps_buffer, '/');
++    so_path[strlen(so_path) - 1] = '\0'; // Cut trailing \n
++    jio_snprintf(buf, buflen, "%s", so_path);
++    fclose(fp);
++    return true;
++  }
++
++  fclose(fp);
++  return false;
++}
++#endif
++
+ static char saved_jvm_path[MAXPATHLEN] = {0};
+ 
+ // Find the full path to the current module, libjvm.so
+@@ -1153,6 +1181,19 @@
+   }
+   fname = dli_fname;
+ #endif // AIX
++#ifdef __ANDROID__
++  if (fname[0] == '\0') {
++    return;
++  }
++
++  if (strchr(fname, '/') == NULL) {
++    bool ok = read_so_path_from_maps(fname, buf, buflen);
++    assert(ok, "unable to turn relative libjvm.so path into absolute");
++    return;
++  }
++
++  snprintf(buf, buflen, "%s", fname);
++#else // !__ANDROID__
+   char* rp = nullptr;
+   if (fname[0] != '\0') {
+     rp = os::realpath(fname, buf, buflen);
+@@ -1203,6 +1244,7 @@
+ 
+   strncpy(saved_jvm_path, buf, MAXPATHLEN);
+   saved_jvm_path[MAXPATHLEN - 1] = '\0';
++#endif // !__ANDROID__
+ }
+ 
+ // Called when creating the thread.  The minimum stack sizes have already been calculated
+--- a/make/common/JdkNativeCompilation.gmk
++++ b/make/common/JdkNativeCompilation.gmk
+@@ -49,8 +49,10 @@
+     SetSharedLibraryOrigin =
+   else
+     ifeq ($(call isTargetOs, linux), true)
++      # Do not disable new dtags: Termux wants DT_RUNPATH instead of DT_RPATH
++      # so that LD_LIBRARY_PATH keeps working for the user.
+       SetExecutableOrigin = \
+-          -Wl,-rpath,\$(DOLLAR)ORIGIN$1 -Wl,--disable-new-dtags
++          -Wl,-rpath,\$(DOLLAR)ORIGIN$1
+     else
+       SetExecutableOrigin = \
+           -Wl,-rpath,\$(DOLLAR)ORIGIN$1
